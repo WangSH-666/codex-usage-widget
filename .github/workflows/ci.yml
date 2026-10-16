@@ -1,0 +1,24 @@
+name: macOS checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: swift --version && xcrun --sdk macosx --show-sdk-version
+      - name: Tests
+        run: bash scripts/test.sh
+      - name: Build and package
+        run: bash scripts/package.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Codex-Usage-macOS
+          path: |
+            dist/*.zip
+            dist/*.sha256

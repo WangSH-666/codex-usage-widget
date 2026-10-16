@@ -1,0 +1,14 @@
+.DS_Store
+.build/
+.swiftpm/
+dist/
+legacy/
+docs/local/
+__pycache__/
+*.log
+.env
+.env.*
+.agents/
+.codex/
+.claude/
+.gstack/
