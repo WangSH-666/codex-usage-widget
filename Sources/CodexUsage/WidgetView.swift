@@ -42,7 +42,7 @@ struct WidgetView: View {
         }
         .overlay { WindowDragSurface(showMenu: showMenu).accessibilityHidden(true) }
         .padding(8)
-        .preferredColorScheme(preferences.colorScheme)
+        .environment(\.colorScheme, preferences.colorScheme)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: store.stats?.dailyTokens)
     }
 

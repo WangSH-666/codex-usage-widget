@@ -1,12 +1,8 @@
-Native Codex usage card for macOS 26+.
+# 2.1.0 更新内容
 
-- Remaining 5-hour / weekly allowance rings, plus optional local 24-hour token total.
-- Liquid Glass, light/dark appearance, background opacity slider, custom ring colors.
-- Drag anywhere; use the context menu or menu-bar icon for settings.
-- Local absolute reset times, persisted position/preferences, no Dock icon.
+- 新增“检查更新”，可查看最新公开版本、更新说明并下载适配安装包。
+- 新增六组圆环预设配色，保留自定义颜色。
+- 修复未开启置顶时遮挡全屏应用的问题。
+- 细微优化。
 
-Download the ZIP matching your Mac's architecture, unzip, and move **Codex Usage.app** to Applications. Requires an installed and signed-in Codex app/CLI. The `.sha256` file provides the archive checksum.
-
-The application is ad-hoc signed, not Apple-notarized. Verify its checksum before allowing a blocked first launch in System Settings → Privacy & Security. Source builds are supported; see README.
-
-Screenshots use demo data. No telemetry, log uploading, API key, or model calls. Independent community project; not affiliated with OpenAI.
+公开发布的更新说明由 scripts/release-notes.sh 从 CHANGELOG.md 对应版本条目生成。

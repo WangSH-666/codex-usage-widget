@@ -65,7 +65,7 @@ public final class AccountClient {
             try input.fileHandleForWriting.write(contentsOf: data)
         }
         try send(["id": 1, "method": "initialize", "params": [
-            "clientInfo": ["name": "codex-usage-macos", "version": "2.0.6"],
+            "clientInfo": ["name": "codex-usage-macos", "version": "2.1.0"],
             "capabilities": ["experimentalApi": false]
         ]])
         _ = try mailbox.response(id: 1, deadline: deadline)

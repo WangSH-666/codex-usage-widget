@@ -8,7 +8,23 @@ import SwiftUI
     let currentWindow = window ?? view?.window
     var record: [String: Any] = ["event": event, "time": Date().timeIntervalSince1970]
     if let view { record["bounds"] = NSStringFromRect(view.bounds); record["viewFrame"] = NSStringFromRect(view.frame) }
-    if let currentWindow { record["windowFrame"] = NSStringFromRect(currentWindow.frame); record["movable"] = currentWindow.isMovable }
+    if let currentWindow {
+        record["windowFrame"] = NSStringFromRect(currentWindow.frame)
+        record["movable"] = currentWindow.isMovable
+        record["level"] = currentWindow.level.rawValue
+        record["activeSpace"] = currentWindow.isOnActiveSpace
+        record["fullScreenAuxiliary"] = currentWindow.collectionBehavior.contains(.fullScreenAuxiliary)
+        let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+        let index = windows.firstIndex { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue == currentWindow.windowNumber }
+        record["onScreen"] = index != nil
+        if let index {
+            // Only record counts/layers, never other apps' names or window titles.
+            record["normalWindowsBelow"] = windows.dropFirst(index + 1).filter {
+                ($0[kCGWindowLayer as String] as? NSNumber)?.intValue == 0 &&
+                ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value != ProcessInfo.processInfo.processIdentifier
+            }.count
+        }
+    }
     if let point { record["point"] = NSStringFromPoint(point) }
     guard var data = try? JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]) else { return }
     data.append(10)

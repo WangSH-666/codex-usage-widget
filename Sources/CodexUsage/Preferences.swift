@@ -1,17 +1,26 @@
 import AppKit
 import SwiftUI
 
+struct RingPalette {
+    let id: String
+    let title: String
+    let primaryHex: String
+    let secondaryHex: String
+}
+
 @MainActor final class Preferences: ObservableObject {
     private let defaults: UserDefaults
     @Published var interval: Int { didSet { defaults.set(interval, forKey: "refreshInterval") } }
     @Published var topmost: Bool { didSet { defaults.set(topmost, forKey: "topmost") } }
     @Published var opacity: Double { didSet { defaults.set(opacity, forKey: "opacity") } }
     @Published var appearance: String { didSet { defaults.set(appearance, forKey: "appearance") } }
+    @Published private(set) var systemIsDark: Bool
     @Published var primaryColorHex: String { didSet { defaults.set(primaryColorHex, forKey: "primaryRingColor") } }
     @Published var secondaryColorHex: String { didSet { defaults.set(secondaryColorHex, forKey: "secondaryRingColor") } }
     @Published var layout: String { didSet { defaults.set(layout, forKey: "layout") } }
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        systemIsDark = Self.readSystemIsDark()
         let primary = defaults.string(forKey: "primaryRingColor") ?? Self.defaultPrimaryColor
         let secondary = defaults.string(forKey: "secondaryRingColor") ?? Self.defaultSecondaryColor
         primaryColorHex = Self.color(from: primary) != nil ? primary : Self.defaultPrimaryColor
@@ -26,8 +35,25 @@ import SwiftUI
         let storedLayout = defaults.string(forKey: "layout") ?? "quota"
         layout = ["quota", "tokens"].contains(storedLayout) ? storedLayout : "quota"
     }
-    static let defaultPrimaryColor = "297DFA"
-    static let defaultSecondaryColor = "7A63F0"
+    static let palettes: [RingPalette] = [
+        RingPalette(id: "classic", title: "经典蓝紫", primaryHex: "297DFA", secondaryHex: "7A63F0"),
+        RingPalette(id: "ocean", title: "薄荷海风", primaryHex: "00A88F", secondaryHex: "3888E8"),
+        RingPalette(id: "sunset", title: "日落珊瑚", primaryHex: "EB7766", secondaryHex: "C45D9C"),
+        RingPalette(id: "forest", title: "森林青苔", primaryHex: "36966F", secondaryHex: "A18A40"),
+        RingPalette(id: "berry", title: "莓果暮色", primaryHex: "D65C85", secondaryHex: "8569D8"),
+        RingPalette(id: "slate", title: "石墨银蓝", primaryHex: "748196", secondaryHex: "487EAC")
+    ]
+    static let defaultPrimaryColor = palettes[0].primaryHex
+    static let defaultSecondaryColor = palettes[0].secondaryHex
+    var selectedPaletteID: String? {
+        Self.palettes.first {
+            $0.primaryHex == primaryColorHex.uppercased() && $0.secondaryHex == secondaryColorHex.uppercased()
+        }?.id
+    }
+    func applyPalette(_ palette: RingPalette) {
+        primaryColorHex = palette.primaryHex
+        secondaryColorHex = palette.secondaryHex
+    }
     var primaryRingColor: NSColor { Self.color(from: primaryColorHex) ?? Self.color(from: Self.defaultPrimaryColor)! }
     var secondaryRingColor: NSColor { Self.color(from: secondaryColorHex) ?? Self.color(from: Self.defaultSecondaryColor)! }
     static func color(from hex: String) -> NSColor? {
@@ -47,7 +73,13 @@ import SwiftUI
     // Match the system Batteries medium widget: 344×164 card plus 8pt outer inset.
     var cardSize: NSSize { NSSize(width: 344, height: 164) }
     var panelSize: NSSize { NSSize(width: cardSize.width + 16, height: cardSize.height + 16) }
-    var colorScheme: ColorScheme? { appearance == "system" ? nil : appearance == "dark" ? .dark : .light }
+    static func readSystemIsDark() -> Bool {
+        (UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)?["AppleInterfaceStyle"] as? String) == "Dark"
+    }
+    func refreshSystemAppearance() { updateSystemAppearance(isDark: Self.readSystemIsDark()) }
+    // Explicitly resolve system mode; a nil hosting preference can retain the old override until activation.
+    var colorScheme: ColorScheme { appearance == "system" ? (systemIsDark ? .dark : .light) : appearance == "dark" ? .dark : .light }
+    func updateSystemAppearance(isDark: Bool) { if systemIsDark != isDark { systemIsDark = isDark } }
     func restoreOrigin(size: NSSize) -> NSPoint {
         if let point = defaults.string(forKey: "windowOrigin") {
             let origin = NSPointFromString(point)

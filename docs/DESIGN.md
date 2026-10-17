@@ -6,7 +6,7 @@ Design support: `awesome-design-md`, Apple direction, adapted for a native deskt
 
 Use the system's actual Liquid Glass material with SwiftUI `glassEffect`, SF Pro,
 SF Symbols, continuous corners, quiet blue and indigo accents, generous internal
-spacing, and automatic light/dark appearance. No webview, simulated browser chrome,
+spacing, and automatic light/dark appearance. Resolve system appearance explicitly and repaint immediately after a menu selection, without requiring a focus change. No webview, simulated browser chrome,
 wallpaper baked into the card, or additional font dependency.
 
 ## Card
@@ -35,10 +35,11 @@ Drag anywhere on the card. A native AppKit view handles the mouse down and
 updates the frame using actual pointer coordinates; do not rely on NSHostingView's
 background-drag flag or the nonactivating panel's system drag loop. Right-click
 anywhere or use the menu bar to expose content layout, refresh, appearance,
-refresh interval, opacity, independent ring colors via the native color panel, always-on-top, show/hide, and quit. Hide never quits the
-monitor. Default window level is normal; it does not cover the active app. All
-Spaces are supported. Store settings and a safe screen position using macOS
+refresh interval, opacity, six paired color presets with dual-ring menu swatches, plus independent ring colors via the native color panel, always-on-top, show/hide, and quit. Hide never quits the
+monitor. When not pinned, use a level just above desktop icons, below normal application windows, and omit fullScreenAuxiliary. Only the explicit always-on-top setting uses floating level and joins full-screen spaces. Desktop Spaces remain supported. Store settings and a safe screen position using macOS
 UserDefaults. Do not request Accessibility, screen recording, or API credentials.
+
+The menu includes a manual update check. Present installed/latest versions and short release notes, with a download action and clear replacement instructions. Keep network failures recoverable; do not make update checks part of startup.
 
 ## States and accessibility
 

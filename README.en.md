@@ -18,9 +18,15 @@ The download is ad-hoc signed and is not Apple-notarized. If macOS blocks the fi
 
 ## Controls
 
-Drag anywhere to move the card. Right-click or use the menu-bar icon to change layout, appearance, background opacity (0–100%), individual ring colors, refresh interval, and window level. Text and rings remain legible when the background fades. Low allowance (≤20%) uses orange. Reset times use your Mac's local time zone.
+Drag anywhere to move the card. Right-click or use the menu-bar icon to change layout, appearance, background opacity (0–100%), six coordinated color presets or individual ring colors, refresh interval, and window level. Text and rings remain legible when the background fades. Low allowance (≤20%) uses orange. Reset times use your Mac's local time zone.
 
-Preferences and position persist. No Dock icon or automatic login startup. Reopen the app from Applications after quitting.
+When always-on-top is off, the card stays at desktop level and never covers normal or full-screen app windows. Enabling always-on-top explicitly allows a floating card, including full-screen spaces. Preferences and position persist. No Dock icon or automatic login startup. Reopen the app from Applications after quitting.
+
+## Updates
+
+Choose “检查更新…” (Check for Updates) in the context or menu-bar menu. See the latest public version and release notes, then download the matching archive. Quit the app, replace it in Applications, and reopen; preferences persist. Checks contact only GitHub’s public release endpoint on demand and send no account, session, or usage data. Installation is manual.
+
+Appearance changes apply immediately; system mode follows macOS appearance changes while the app is inactive.
 
 ## Privacy and limits
 

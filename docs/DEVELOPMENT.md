@@ -41,9 +41,23 @@ Inspect screenshots and confirm every value in `checks.json` is true. UI screens
 
 For dragging/context-menu changes, verify actual pointer movement and menu actions: window flags and screenshot generation alone do not prove those interactions work.
 
+## Updates and appearance
+
+The manual update check requests only the fixed public GitHub releases endpoint with an ephemeral URLSession. Version comparison is numeric, draft/prerelease builds are rejected, and download links must belong to this repository. The app presents release notes and opens a matching asset or the release page; it does not install or replace itself.
+
+For a read-only update connectivity check without scanning local logs or querying the account:
+
+```sh
+'dist/Codex Usage.app/Contents/MacOS/CodexUsage' --update-status
+```
+
+This prints the latest public version, release page, and matching download URL. To exercise the actual update dialog, launch the app with `--check-updates` after quitting any existing instance.
+
+Appearance is resolved explicitly from the global system appearance setting, observed for system theme changes, and applied to both AppKit hosting and SwiftUI environment. Changes run in common run-loop modes and do not require activating the card.
+
 ## Release
 
-Update `VERSION`, bundle metadata, displayed version strings, and `CHANGELOG.md` together. Run tests and package:
+Follow [release notes and approval rules](RELEASING.md). Update `VERSION`, bundle metadata, displayed version strings, and `CHANGELOG.md` together. Run tests and package:
 
 ```sh
 bash scripts/test.sh
