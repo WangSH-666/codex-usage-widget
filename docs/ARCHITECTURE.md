@@ -14,6 +14,10 @@
 
 `AccountClient` locates Codex in standard application bundles or CLI paths, starts `codex app-server --listen stdio://`, completes initialize → initialized, then reads `account/rateLimits/read`. It selects only the Codex bucket, bounds transport time, and terminates its child process. It does not read auth files. Failed reads clear the prior account snapshot.
 
+`AccountQuota` preserves the Codex bucket's optional `planType` and selects five-hour/weekly windows by `windowDurationMins`, independently of the primary/secondary slot. A response containing only weekly windows selects a 164 × 164 pt card in a 180 × 180 pt panel. A plan name alone never invents a missing duration or hides a returned five-hour window. Unsupported or unknown durations do not trigger weekly-only mode. Field reference: [OpenAI App Server](https://learn.chatgpt.com/docs/app-server).
+
+`UsageStore` publishes the successful response's shape. The panel resizes on the next common run-loop iteration, keeping its top-left anchor and checking screen bounds. Failed reads clear all account values while retaining the last known shape; a subsequent successful account read chooses the shape anew.
+
 `QuotaWindow` validates window durations and expiry before exposing remaining percentages. Absolute reset labels use the current local time zone. Missing or stale values stay unknown rather than becoming 100%.
 
 ## Appearance and updates
@@ -27,3 +31,4 @@ The manual UpdateClient calls only GitHub’s fixed public latest-release endpoi
 `Package.swift` builds the native executable and core tests. `scripts/build.sh` assembles the `.app`, generates an icon, and applies ad-hoc signing. `scripts/package.sh` creates an app ZIP and SHA-256 checksum. GitHub Actions run tests/builds and publish archives for `v<VERSION>` tags.
 
 Synthetic `--demo` mode supplies fixed counts and quotas without starting log scans or an account-server process, so public previews never need a real account.
+`--demo-pro` implies demo mode and parses a synthetic Pro weekly-only response through the production parser. It does not change the real account or contact any account service. Both demo flags reject real `--snapshot` diagnostics.

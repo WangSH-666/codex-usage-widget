@@ -11,7 +11,7 @@ wallpaper baked into the card, or additional font dependency.
 
 ## Card
 
-Both persistent content layouts use the system Batteries medium-widget footprint:
+For accounts with both quota windows, both persistent content layouts use the system Batteries medium-widget footprint:
 344 × 164 points inside a 360 × 180 window (8-point outer shadow inset). This was
 measured from the actual Notification Center Batteries window on the user's Mac.
 Keep 24-point continuous corners, 20-point horizontal insets and centered content with at least 10-point vertical insets.
@@ -24,6 +24,8 @@ centers of each half; balanced negative space is intentional, without extra fill
 Tokens plus quota: one horizontal composition, a 96-point-wide 24-hour total on the
 left, a quiet vertical divider, and two compact 74-point outer ring bounds with 8-point strokes and centered 21-point numerals on the right. Keep
 the same outer geometry when switching. Use 11-point labels and 10-point reset text; split cross-day dates and times across two lines instead of shrinking the text. Use one material surface.
+
+Weekly-only responses use the small-widget footprint: a 164 × 164 pt rounded square inside a 180 × 180 pt panel. Center one 104-point weekly ring with the same 24-point corners, 31-point numeral, label and absolute reset time. The optional Token layout uses an 88-point ring with a 26-point numeral and a quiet single-line token total below it. Keep the same square geometry for both content choices. Detect the shape from actual reported window durations, not a blanket assumption that every Pro variant has identical limits. Loading failures clear quota values while preserving the last known shape; account switches resize around the same top-left anchor.
 
 The glass sits over an adaptive neutral tint to keep text readable on busy desktop
 backgrounds. Background opacity alone is adjustable from 0–100% in 1% steps using a native menu slider, with quick presets. Keep foreground text, rings, and the window fully opaque; fade the glass, tint, border, and surface shadow together. Remove the redundant inner “剩余” label. Respect system Reduce Motion and Reduce Transparency. Use orange at
