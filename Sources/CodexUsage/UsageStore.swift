@@ -4,6 +4,8 @@ import UsageCore
 
 @MainActor final class UsageStore: ObservableObject {
     private let demoMode: Bool
+    private let demoPro = CommandLine.arguments.contains("--demo-pro")
+    @Published private(set) var weeklyOnly = false
     @Published private(set) var stats: UsageStats?
     @Published private(set) var quota: AccountQuota?
     @Published private(set) var scanError: String?
@@ -21,7 +23,7 @@ import UsageCore
     private var accountAgain = false
     var interval = 30
 
-    init(demoMode: Bool = CommandLine.arguments.contains("--demo")) {
+    init(demoMode: Bool = CommandLine.arguments.contains("--demo") || CommandLine.arguments.contains("--demo-pro")) {
         self.demoMode = demoMode
     }
 
@@ -37,19 +39,39 @@ import UsageCore
     }
     func refresh() {
         if demoMode {
-            let sampleDate = ISO8601DateFormatter().date(from: "2026-10-16T10:00:00+08:00")!
-            now = sampleDate
-            stats = UsageStats(dailyTokens: 12_340_000, scannedAt: sampleDate)
-            quota = AccountQuota(
-                primary: QuotaWindow(usedPercent: 38, windowDurationMins: 300,
-                                     resetsAt: sampleDate.addingTimeInterval(5 * 3600).timeIntervalSince1970),
-                secondary: QuotaWindow(usedPercent: 27, windowDurationMins: 10080,
-                                       resetsAt: sampleDate.addingTimeInterval(6 * 86400).timeIntervalSince1970),
-                fetchedAt: sampleDate)
+            loadDemo(pro: demoPro)
             return
         }
         if scanning { scanAgain = true } else { scan() }
         if syncing { accountAgain = true } else { syncAccount() }
+    }
+    // Synthetic wire responses exercise the same parser as real account reads.
+    // This path never starts scanners or account processes, nor changes the real plan.
+    func loadDemo(pro: Bool, weeklyInPrimary: Bool = false, usedPercent: Double = 27,
+                  resetOffset: TimeInterval = 6 * 86400) {
+        guard demoMode else { return }
+        let sampleDate = ISO8601DateFormatter().date(from: "2026-10-28T10:00:00+08:00")!
+        now = sampleDate
+        stats = UsageStats(dailyTokens: 12_340_000, scannedAt: sampleDate)
+        let week: [String: Any] = ["usedPercent": usedPercent, "windowDurationMins": 10080,
+            "resetsAt": sampleDate.addingTimeInterval(resetOffset).timeIntervalSince1970]
+        let five: [String: Any] = ["usedPercent": 38, "windowDurationMins": 300,
+            "resetsAt": sampleDate.addingTimeInterval(5 * 3600).timeIntervalSince1970]
+        var snapshot: [String: Any] = ["planType": pro ? "pro" : "plus", "primary": five, "secondary": week]
+        if pro {
+            snapshot[weeklyInPrimary ? "primary" : "secondary"] = week
+            snapshot[weeklyInPrimary ? "secondary" : "primary"] = NSNull()
+        }
+        let value = try! AccountQuota.parse(result: ["rateLimitsByLimitId": ["codex": snapshot]], now: sampleDate)
+        quota = value
+        weeklyOnly = value.isWeeklyOnly
+        accountError = nil
+    }
+    func loadDemoOffline() {
+        guard demoMode else { return }
+        quota = nil
+        accountError = "账户同步超时，将自动重试。"
+        // Keep the last known geometry while clearing all stale account values.
     }
     private func scan() {
         scanning = true
@@ -76,7 +98,10 @@ import UsageCore
                 guard let self else { return }
                 self.syncing = false
                 switch result {
-                case .success(let value): self.quota = value; self.accountError = nil
+                case .success(let value):
+                    self.quota = value
+                    self.weeklyOnly = value.isWeeklyOnly
+                    self.accountError = nil
                 case .failure(let error): self.accountError = error.localizedDescription
                     // A failed read can mean account sign-out or switching. Do not retain another account's quota.
                     self.quota = nil

@@ -10,10 +10,24 @@ struct WidgetView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+    private var cardSize: NSSize { preferences.cardSize(weeklyOnly: store.weeklyOnly) }
 
     var body: some View {
         Group {
-            if preferences.layout == "tokens" {
+            if store.weeklyOnly {
+                VStack(spacing: 6) {
+                    quota(title: "1周", window: store.quota?.weekly, minutes: 10080,
+                          color: Color(nsColor: preferences.secondaryRingColor),
+                          compact: preferences.layout == "tokens", single: true)
+                    if preferences.layout == "tokens" {
+                        Text("24小时 · \(store.stats?.millions ?? "—")M")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit().lineLimit(1).minimumScaleFactor(0.85)
+                            .accessibilityLabel(store.stats.map { "过去24小时，\($0.dailyTokens) tokens" } ?? "正在读取过去24小时用量")
+                    }
+                }
+            } else if preferences.layout == "tokens" {
                 HStack(alignment: .center, spacing: 12) {
                     total.frame(width: 96, alignment: .leading)
                     Rectangle().fill(.primary.opacity(0.08)).frame(width: 0.5, height: 88)
@@ -25,7 +39,7 @@ struct WidgetView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-        .frame(width: preferences.cardSize.width, height: preferences.cardSize.height)
+        .frame(width: cardSize.width, height: cardSize.height)
         .background {
             ZStack {
                 if reduceTransparency {
@@ -68,8 +82,8 @@ struct WidgetView: View {
 
     private func quotaPair(compact: Bool) -> some View {
         HStack(alignment: .center, spacing: compact ? 12 : 28) {
-            quota(title: "5小时", window: store.quota?.primary, minutes: 300, color: Color(nsColor: preferences.primaryRingColor), compact: compact)
-            quota(title: "1周", window: store.quota?.secondary, minutes: 10080, color: Color(nsColor: preferences.secondaryRingColor), compact: compact)
+            quota(title: "5小时", window: store.quota?.fiveHour, minutes: 300, color: Color(nsColor: preferences.primaryRingColor), compact: compact)
+            quota(title: "1周", window: store.quota?.weekly, minutes: 10080, color: Color(nsColor: preferences.secondaryRingColor), compact: compact)
         }
     }
 
@@ -78,15 +92,15 @@ struct WidgetView: View {
         return label.replacingCharacters(in: space...space, with: "\n")
     }
 
-    private func quota(title: String, window: QuotaWindow?, minutes: Int, color: Color, compact: Bool) -> some View {
+    private func quota(title: String, window: QuotaWindow?, minutes: Int, color: Color, compact: Bool, single: Bool = false) -> some View {
         let remaining = store.quotaIsStale ? nil : window?.remaining(expectedMinutes: minutes, now: store.now)
         let tint = remaining.map { $0 <= 20 ? Color.orange : color } ?? color
         let matchingWindow = window?.windowDurationMins == minutes
         let reset = remaining != nil && matchingWindow ? window!.resetLabel(now: store.now) :
             (store.syncing ? "正在同步" : matchingWindow && window?.resetsAt != nil ? "等待更新" : "暂无数据 · 右键查看")
         // Include the stroke in layout bounds so visual top/bottom insets match.
-        let ringSize: CGFloat = compact ? 74 : 104
-        let stroke: CGFloat = compact ? 8 : 12
+        let ringSize: CGFloat = compact ? (single ? 88 : 74) : 104
+        let stroke: CGFloat = compact ? (single ? 10 : 8) : 12
         return VStack(spacing: 0) {
             ZStack {
                 Circle().strokeBorder(color.opacity(0.14), lineWidth: stroke)
@@ -96,7 +110,7 @@ struct WidgetView: View {
                         .rotationEffect(.degrees(-90))
                 }
                 Text(remaining.map { String(format: "%.0f%%", $0) } ?? "—")
-                    .font(.system(size: compact ? 21 : 31, weight: .semibold, design: .rounded))
+                    .font(.system(size: compact ? (single ? 26 : 21) : 31, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -104,15 +118,15 @@ struct WidgetView: View {
             }
             .frame(width: ringSize, height: ringSize)
             .padding(.bottom, compact ? 5 : 6)
-            Text(title).font(.system(size: compact ? 11 : 13, weight: .semibold))
+            Text(title).font(.system(size: compact ? (single ? 12 : 11) : 13, weight: .semibold))
                 .padding(.bottom, 3)
-            Text(compactResetLabel(reset, compact: compact))
+            Text(compactResetLabel(reset, compact: compact && !single))
                 .font(.system(size: compact ? 10 : 11, weight: .medium))
                 .foregroundStyle(.primary.opacity(scheme == .dark ? 0.7 : 0.65))
                 .multilineTextAlignment(.center)
-                .lineLimit(compact ? 2 : 1)
+                .lineLimit(compact && !single ? 2 : 1)
                 .minimumScaleFactor(0.85)
-                .frame(height: compact ? 26 : 14, alignment: .top)
+                .frame(height: compact && !single ? 26 : 14, alignment: .top)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)

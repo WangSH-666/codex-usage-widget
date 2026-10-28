@@ -73,6 +73,11 @@ struct RingPalette {
     // Match the system Batteries medium widget: 344×164 card plus 8pt outer inset.
     var cardSize: NSSize { NSSize(width: 344, height: 164) }
     var panelSize: NSSize { NSSize(width: cardSize.width + 16, height: cardSize.height + 16) }
+    func cardSize(weeklyOnly: Bool) -> NSSize { weeklyOnly ? NSSize(width: 164, height: 164) : cardSize }
+    func panelSize(weeklyOnly: Bool) -> NSSize {
+        let card = cardSize(weeklyOnly: weeklyOnly)
+        return NSSize(width: card.width + 16, height: card.height + 16)
+    }
     static func readSystemIsDark() -> Bool {
         (UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)?["AppleInterfaceStyle"] as? String) == "Dark"
     }
