@@ -55,11 +55,32 @@ public struct QuotaWindow: Codable, Equatable, Sendable {
 public struct AccountQuota: Codable, Equatable, Sendable {
     public let primary: QuotaWindow?
     public let secondary: QuotaWindow?
+    public let planType: String?
     public let fetchedAt: Date
-    public init(primary: QuotaWindow?, secondary: QuotaWindow?, fetchedAt: Date = Date()) {
+    public init(primary: QuotaWindow?, secondary: QuotaWindow?, planType: String? = nil, fetchedAt: Date = Date()) {
         self.primary = primary
         self.secondary = secondary
+        self.planType = planType?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         self.fetchedAt = fetchedAt
+    }
+    // Slots are not durations: a weekly-only account can put its week in either slot.
+    public var fiveHour: QuotaWindow? { window(minutes: 300) }
+    public var weekly: QuotaWindow? { window(minutes: 10080) }
+    public var isWeeklyOnly: Bool {
+        let windows = [primary, secondary].compactMap { $0 }
+        return weekly != nil && windows.allSatisfy { $0.windowDurationMins == 10080 }
+    }
+    public var planLabel: String {
+        switch planType {
+        case "pro": return "Pro"
+        case "prolite": return "Pro Lite"
+        case "promax": return "Pro Max"
+        case "plus": return "Plus"
+        default: return planType ?? "未知"
+        }
+    }
+    private func window(minutes: Int) -> QuotaWindow? {
+        [primary, secondary].compactMap { $0 }.first { $0.windowDurationMins == minutes }
     }
     public static func parse(result: [String: Any], now: Date = Date()) throws -> AccountQuota {
         let buckets = result["rateLimitsByLimitId"] as? [String: Any] ?? [:]
@@ -75,7 +96,8 @@ public struct AccountQuota: Codable, Equatable, Sendable {
         let primary = window(snapshot["primary"])
         let secondary = window(snapshot["secondary"])
         guard primary != nil || secondary != nil else { throw UsageError.quotaUnavailable }
-        return AccountQuota(primary: primary, secondary: secondary, fetchedAt: now)
+        return AccountQuota(primary: primary, secondary: secondary,
+                            planType: snapshot["planType"] as? String, fetchedAt: now)
     }
 }
 

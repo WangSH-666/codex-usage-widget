@@ -23,6 +23,7 @@ final class WidgetPanel: NSPanel {
     private var showing = true
     private var editingSecondaryColor = false
     private let showNotification = Notification.Name("local.codexusage.show")
+    private var panelSize: NSSize { preferences.panelSize(weeklyOnly: store.weeklyOnly) }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let identifier = Bundle.main.bundleIdentifier ?? "local.codexusage.widget"
@@ -52,6 +53,12 @@ final class WidgetPanel: NSPanel {
                 MainActor.assumeIsolated { self?.applyPreferences() }
             }
         }.store(in: &subscriptions)
+        store.$weeklyOnly.removeDuplicates().sink { [weak self] _ in
+            // @Published emits before assignment; resize after the new account shape is committed.
+            RunLoop.main.perform(inModes: [.common]) {
+                MainActor.assumeIsolated { self?.applyPreferences() }
+            }
+        }.store(in: &subscriptions)
         systemAppearanceObserver = DistributedNotificationCenter.default().addObserver(
             forName: Notification.Name("AppleInterfaceThemeChangedNotification"), object: nil, queue: .main
         ) { [weak self] _ in
@@ -76,7 +83,7 @@ final class WidgetPanel: NSPanel {
     }
 
     private func makePanel() {
-        let size = preferences.panelSize
+        let size = panelSize
         panel = WidgetPanel(contentRect: NSRect(origin: preferences.restoreOrigin(size: size), size: size),
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.title = "Codex 用量"
@@ -119,7 +126,7 @@ final class WidgetPanel: NSPanel {
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu(title: "Codex 用量")
-        let heading = NSMenuItem(title: "Codex 用量  2.1.0", action: nil, keyEquivalent: "")
+        let heading = NSMenuItem(title: "Codex 用量  2.2.0", action: nil, keyEquivalent: "")
         heading.isEnabled = false; menu.addItem(heading)
         menu.addItem(item(showing ? "隐藏小组件" : "显示小组件", action: #selector(toggleVisibility), key: "w"))
         menu.addItem(item("立即刷新", action: #selector(refresh), key: "r"))
@@ -167,6 +174,7 @@ final class WidgetPanel: NSPanel {
         }
         colors.addItem(.separator())
         for (index, title, color) in [(0, "自定义5小时…", preferences.primaryRingColor), (1, "自定义1周…", preferences.secondaryRingColor)] {
+            if store.weeklyOnly && index == 0 { continue }
             let entry = item(title, action: #selector(chooseRingColor(_:)))
             entry.tag = index
             entry.image = NSImage(size: NSSize(width: 16, height: 16), flipped: false) { rect in
@@ -230,7 +238,7 @@ final class WidgetPanel: NSPanel {
     }
     private func applyPreferences() {
         guard panel != nil else { return }
-        let size = preferences.panelSize
+        let size = panelSize
         if panel.frame.size != size {
             let oldFrame = panel.frame
             panel.setFrame(NSRect(x: oldFrame.minX, y: oldFrame.maxY - size.height,
@@ -334,7 +342,7 @@ final class WidgetPanel: NSPanel {
         if alert.runModal() == .alertSecondButtonReturn { NSWorkspace.shared.open(UpdateClient.releasePage) }
     }
     private func presentUpdate(_ update: ReleaseUpdate) {
-        let installed = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "2.1.0"
+        let installed = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "2.2.0"
         let available = update.isNewer(than: installed)
         let alert = NSAlert()
         alert.messageText = available ? "发现新版本 \(update.version)" : "无需更新"
@@ -376,7 +384,7 @@ final class WidgetPanel: NSPanel {
         let quotaState = store.accountError ?? (store.quotaIsStale ? "额度快照等待更新" : store.quota != nil ? "已连接当前登录账户" : "正在同步")
         let lastRead = store.stats?.scannedAt.formatted(date: .omitted, time: .standard) ?? "尚未完成"
         let quotaRead = store.quota?.fetchedAt.formatted(date: .omitted, time: .standard) ?? "尚未完成"
-        alert.informativeText = "账户额度：\(quotaState)\n额度更新：\(quotaRead)\n本机统计：\(store.scanError ?? "正常")\n统计更新：\(lastRead)\n可见会话：\(store.stats?.sessionCount ?? 0) 个\n待确认运行状态：\(store.stats?.uncertainCount ?? 0) 个\n\n过去24小时仅统计本机日志；账户额度覆盖当前账户。M = 百万 tokens。超过15分钟无活动的任务不计入已确认运行数。\n\n只读统计，不调用模型，不读取或保存登录凭据。账户额度每30秒同步，失败10秒后重试。\n\n版本 2.1.0 · 独立桌面卡片"
+        alert.informativeText = "账户套餐：\(store.quota?.planLabel ?? "未知")\n账户额度：\(quotaState)\n额度更新：\(quotaRead)\n本机统计：\(store.scanError ?? "正常")\n统计更新：\(lastRead)\n可见会话：\(store.stats?.sessionCount ?? 0) 个\n待确认运行状态：\(store.stats?.uncertainCount ?? 0) 个\n\n过去24小时仅统计本机日志；账户额度覆盖当前账户。M = 百万 tokens。超过15分钟无活动的任务不计入已确认运行数。\n\n只读统计，不调用模型，不读取或保存登录凭据。账户额度每30秒同步，失败10秒后重试。\n\n版本 2.2.0 · 独立桌面卡片"
         alert.addButton(withTitle: "完成")
         alert.addButton(withTitle: "立即刷新")
         NSApp.activate(ignoringOtherApps: true)
@@ -409,6 +417,7 @@ final class WidgetPanel: NSPanel {
     // Test the actual AppKit window and production view, without screen-recording permission.
     private func runUICheck() {
         Task { @MainActor [self] in
+            store.loadDemo(pro: false)
             try? await Task.sleep(for: .seconds(4))
             var checks: [String: Bool] = [:]
             checks["panelSize"] = panel.frame.size == preferences.panelSize
@@ -536,10 +545,62 @@ final class WidgetPanel: NSPanel {
                 }
             }
             preferences.primaryColorHex = oldPrimaryColor; preferences.secondaryColorHex = oldSecondaryColor
+            if CommandLine.arguments.contains("--demo") || CommandLine.arguments.contains("--demo-pro") {
+                preferences.layout = "quota"; preferences.opacity = 1
+                let anchor = panel.frame
+                store.loadDemo(pro: true)
+                try? await Task.sleep(for: .milliseconds(400))
+                checks["proResizesWithoutMenuOrActivation"] = panel.frame.size == NSSize(width: 180, height: 180)
+                checks["proPreservesTopLeftAnchor"] = panel.frame.minX == anchor.minX && panel.frame.maxY == anchor.maxY
+                checks["proRecognized"] = store.quota?.planType == "pro" && store.quota?.fiveHour == nil
+                let ringSettings = buildMenu().items.first { $0.title == "圆环颜色" }?.submenu?.items ?? []
+                checks["proOnlyOffersWeeklyCustomColor"] = ringSettings.contains { $0.title == "自定义1周…" } && !ringSettings.contains { $0.title == "自定义5小时…" }
+                checks["proSmallWidgetCard"] = preferences.cardSize(weeklyOnly: store.weeklyOnly) == NSSize(width: 164, height: 164)
+                for layout in ["quota", "tokens"] {
+                    preferences.layout = layout
+                    for theme in ["light", "dark"] {
+                        preferences.appearance = theme; applyPreferences()
+                        try? await Task.sleep(for: .milliseconds(600))
+                        checks["pro-\(layout)-\(theme)Size"] = panel.frame.size == NSSize(width: 180, height: 180)
+                        checks["pro-\(layout)-\(theme)Rendered"] = capturePreview("pro-\(layout)-\(theme)", directory: output)
+                    }
+                }
+                preferences.layout = "quota"; preferences.appearance = "light"; applyPreferences()
+                store.loadDemo(pro: true, weeklyInPrimary: true)
+                try? await Task.sleep(for: .milliseconds(400))
+                checks["proWeeklyPrimarySupported"] = store.weeklyOnly && store.quota?.weekly == store.quota?.primary
+                for (used, reset, name) in [(0.0, 6.0 * 86400, "full"), (100.0, 6.0 * 86400, "empty"),
+                                            (85.0, 6.0 * 86400, "low"), (27.0, -1.0, "expired")] {
+                    store.loadDemo(pro: true, usedPercent: used, resetOffset: reset)
+                    try? await Task.sleep(for: .milliseconds(600))
+                    checks["pro-\(name)KeepsSquare"] = panel.frame.size == NSSize(width: 180, height: 180)
+                    checks["pro-\(name)Rendered"] = capturePreview("pro-\(name)", directory: output)
+                }
+                store.loadDemoOffline()
+                try? await Task.sleep(for: .milliseconds(400))
+                checks["proOfflineClearsQuotaKeepsSquare"] = store.quota == nil && store.weeklyOnly && panel.frame.size == NSSize(width: 180, height: 180)
+                checks["proOfflineRendered"] = capturePreview("pro-offline", directory: output)
+                store.loadDemo(pro: false)
+                try? await Task.sleep(for: .milliseconds(400))
+                checks["plusRestoresWideAutomatically"] = !store.weeklyOnly && panel.frame.size == NSSize(width: 360, height: 180)
+                checks["accountSwitchRestoresBothWindows"] = store.quota?.fiveHour != nil && store.quota?.weekly != nil
+                store.refresh()
+            }
             preferences.appearance = oldTheme; preferences.layout = oldLayout; preferences.opacity = oldOpacity; applyPreferences()
             let data = try! JSONSerialization.data(withJSONObject: checks, options: [.prettyPrinted, .sortedKeys])
             try? data.write(to: URL(fileURLWithPath: output).appendingPathComponent("checks.json"))
             NSApp.terminate(nil)
         }
+    }
+    private func capturePreview(_ name: String, directory: String) -> Bool {
+        guard let view = panel.contentView else { return false }
+        view.layoutSubtreeIfNeeded()
+        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return false }
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        guard let data = bitmap.representation(using: .png, properties: [:]) else { return false }
+        do {
+            try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent("\(name).png"))
+            return true
+        } catch { return false }
     }
 }

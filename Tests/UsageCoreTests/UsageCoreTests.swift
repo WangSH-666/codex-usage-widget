@@ -231,6 +231,20 @@ final class UsageCoreTests {
         expectThrows(try AccountClient(executable: url).read(timeout: 0.15))
         expectLessThan(Date().timeIntervalSince(started), 2)
     }
+    @Test func testProWeeklyAccountTransport() throws {
+        let script = """
+        IFS= read -r request
+        printf '%s\\n' '{"id":1,"result":{}}'
+        IFS= read -r notification
+        IFS= read -r request
+        printf '%s\\n' '{"id":2,"result":{"rateLimitsByLimitId":{"codex":{"planType":"pro","primary":null,"secondary":{"usedPercent":27,"windowDurationMins":10080,"resetsAt":2000000000}}}}}'
+        while IFS= read -r ignored; do :; done
+        """
+        let quota = try AccountClient(executable: server(script)).read(timeout: 2)
+        expectEqual(quota.planType, "pro")
+        expectTrue(quota.isWeeklyOnly)
+        expectEqual(quota.weekly?.remaining(expectedMinutes: 10080, now: now), 73)
+    }
     @Test func testAccountServiceFailureDoesNotExposeRawResponse() throws {
         let url = try server("IFS= read -r request\nprintf '%s\\n' '{\"id\":1,\"error\":{\"message\":\"private-account-id\"}}'\nwhile IFS= read -r ignored; do :; done\n")
         expectThrows(try AccountClient(executable: url).read(timeout: 1)) { error in

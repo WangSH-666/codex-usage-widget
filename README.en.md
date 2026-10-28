@@ -8,6 +8,8 @@ A native SwiftUI/AppKit desktop card for Codex. See your remaining **5-hour and 
 
 Screenshots use synthetic demo data.
 
+Quota windows are identified by their reported duration. Weekly-only accounts (including Pro responses with no five-hour window) use a 164 × 164 pt rounded square with one weekly ring. Accounts reporting both windows retain the 344 × 164 pt card. Both shapes support the optional local token total. The detected plan appears in the status dialog.
+
 ## Install
 
 Requires **macOS 26+** and an installed, signed-in Codex app or CLI. Codex bundled with ChatGPT.app is also supported. The first downloadable build targets Apple Silicon.

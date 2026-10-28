@@ -33,11 +33,16 @@ Quit an existing card first; single-instance protection otherwise only shows tha
 ```sh
 # Synthetic data only: no log scan or account read.
 open -n 'dist/Codex Usage.app' --args --demo --ui-check /tmp/codex-usage-preview
+
+# Weekly-only Pro simulation; no real account access or subscription change.
+open -n 'dist/Codex Usage.app' --args --demo-pro
 ```
 
 The app checks both layouts, light/dark rendering, opacity endpoints, preference persistence, and custom colors; saves PNGs plus `checks.json`; then exits. `--demo` alone opens the card with sample data. Demo mode never runs the real scanners or account client. The UI check temporarily changes and then restores the app's appearance/layout/color/opacity settings.
 
 Inspect screenshots and confirm every value in `checks.json` is true. UI screenshots require a normal macOS graphical session. Core tests and release builds run in CI without signing credentials or a Codex login.
+
+The UI check also simulates Pro weekly windows in either slot, square quota/token layouts in both themes, 0/100/low/expired quotas, offline clearing, and automatic resizing back to the dual-window Plus layout. `--demo-pro --ui-check <directory>` runs the same checks. Weekly-only geometry is 164 × 164 pt (180 × 180 including the shadow inset); the original dual-window geometry remains unchanged. These are synthetic acceptance checks, not evidence of a live Pro account's current entitlement.
 
 For dragging/context-menu changes, verify actual pointer movement and menu actions: window flags and screenshot generation alone do not prove those interactions work.
 
